@@ -10,6 +10,7 @@ const (
 	InvalidByteLength    ErrorCode = "InvalidByteLength"
 	DeserializationError ErrorCode = "DeserializationError"
 	UnsupportedTypeError ErrorCode = "UnsupportedTypeError"
+	PanicFound           ErrorCode = "PanicFoundError"
 )
 
 func (e ErrorCode) ToString() string {

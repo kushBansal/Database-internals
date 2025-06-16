@@ -50,8 +50,12 @@ func (s *BinarySerializer) Serialize(val any) ([]byte, lib.Error) {
 		binary.LittleEndian.PutUint16(buf, v)
 		return buf, lib.EmptyError()
 	case string:
-		buf := make([]byte, len(v))
-		copy(buf, []byte(v))
+		strBytes := []byte(v)
+		strLen := uint16(len(strBytes))
+
+		buf := make([]byte, 2+len(strBytes))
+		binary.LittleEndian.PutUint16(buf[:2], strLen)
+		copy(buf[2:], strBytes)
 		return buf, lib.EmptyError()
 	}
 
@@ -105,9 +109,16 @@ func (s *BinarySerializer) Deserialize(data []byte, target any) lib.Error {
 		}
 		*v = binary.LittleEndian.Uint16(data)
 	case *string:
-		// For strings, your Serialize function just copies the bytes.
-		// So, we assume the entire byte slice is the string.
-		*v = string(data)
+		if len(data) < 2 {
+			return lib.EmptyError().AddErr(lib.InvalidByteLength, fmt.Errorf("not enough bytes to read string length"))
+		}
+		strLen := binary.LittleEndian.Uint16(data[:2])
+
+		if len(data[2:]) < int(strLen) {
+			return lib.EmptyError().AddErr(lib.InvalidByteLength, fmt.Errorf("not enough bytes to read string of length %d", strLen))
+		}
+		*v = string(data[2 : 2+strLen])
+
 	default:
 		return lib.EmptyError().AddErr(lib.UnsupportedTypeError, fmt.Errorf("unsupported target type for deserialization: %T", target))
 	}

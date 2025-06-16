@@ -9,4 +9,5 @@ type BaseDatabaseStructure interface {
 	Insert(primaryKey string, value common.Value) lib.Error
 	Search(primaryKey string) (common.Value, lib.Error)
 	Delete(primaryKey string) lib.Error
+	Init() lib.Error
 }
