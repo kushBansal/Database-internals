@@ -2,21 +2,31 @@ package implementation
 
 import (
 	"fmt"
+	"runtime/debug"
 
-	"github.com/Kush/Database-internals/lib"
-	"github.com/Kush/Database-internals/DataStructures/B-trees/node"
 	"github.com/Kush/Database-internals/DataStructures/aggregates/common"
+	"github.com/Kush/Database-internals/diskStorage/pagination"
+	"github.com/Kush/Database-internals/lib"
 )
 
 func (b *BPlusTree) Search(primaryKey string) (common.Value, lib.Error) {
-	if b== nil {
+	defer func() {
+		if r := recover(); r != nil {
+			lib.EmptyError().AddErr(lib.PanicFound, fmt.Errorf("panic recovered: %+v , stack : %v", r, string(debug.Stack())))
+		}
+	}()
+	if b == nil {
 		return common.Value{}, lib.EmptyError()
 	}
 
-	return search(b.root, primaryKey)
+	return b.search(b.root, primaryKey)
 }
 
-func search(treeNode *node.TreeNode, primaryKey string) (common.Value, lib.Error) {
+func (b *BPlusTree) search(nodePage pagination.PageID, primaryKey string) (common.Value, lib.Error) {
+	treeNode, err := b.LoadTreeNode(nodePage)
+	if err.IsNotEmpty() {
+		return common.Value{}, err
+	}
 	if treeNode == nil {
 		return common.Value{}, lib.EmptyError()
 	}
@@ -39,9 +49,8 @@ func search(treeNode *node.TreeNode, primaryKey string) (common.Value, lib.Error
 	}
 
 	if childIdx < len(treeNode.ChildTreeNodes()) {
-		return search(treeNode.ChildTreeNodes()[childIdx], primaryKey)
+		return b.search(treeNode.ChildTreeNodes()[childIdx], primaryKey)
 	}
 
 	return common.Value{}, lib.EmptyError().AddErr(lib.SystemError, fmt.Errorf("search: primary key %s not found", primaryKey))
 }
-

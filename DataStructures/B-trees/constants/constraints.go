@@ -1,6 +1,6 @@
 package constants
 
 const (
-	MaxNodesInTreeNode = 113
+	MaxNodesInTreeNode = 4 // max 113
 	PageSize           = 4096
 )

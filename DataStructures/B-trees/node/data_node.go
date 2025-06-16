@@ -7,6 +7,10 @@ type Node struct {
 	value      common.Value
 }
 
+func EmptyNode() Node {
+	return Node{}
+}
+
 func NewNode(primaryKey string, value common.Value) Node {
 	return Node{
 		primaryKey: primaryKey,

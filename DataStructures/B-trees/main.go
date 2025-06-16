@@ -7,11 +7,29 @@ import (
 	"strings"
 
 	"github.com/Kush/Database-internals/DataStructures/B-trees/implementation"
+	"github.com/Kush/Database-internals/DataStructures/B-trees/node"
+	"github.com/Kush/Database-internals/DataStructures/B-trees/serializer"
 	"github.com/Kush/Database-internals/DataStructures/aggregates/common"
+	"github.com/Kush/Database-internals/diskStorage/pagination"
+	"github.com/Kush/Database-internals/pkg/serialization"
 )
 
 func main() {
-	btree := implementation.NewBPlusTree()
+	pager, err := pagination.NewPager("test.db")
+	if err.IsNotEmpty() {
+		fmt.Printf("Error initializing pager: %v\n", err)
+		return
+	}
+	defer pager.Close()
+
+	baseSerializer := serialization.NewBinarySerializer()
+	serializer := serializer.NewTreeNodeSerializer[*node.TreeNode](baseSerializer)
+	btree := implementation.NewBPlusTree(0, pager, serializer, baseSerializer)
+	err = btree.Init()
+	if err.IsNotEmpty() {
+		fmt.Printf("Error initializing B+ Tree: %v\n", err)
+		return
+	}
 	scanner := bufio.NewScanner(os.Stdin)
 
 	fmt.Println("B+ Tree CLI: Enter commands like:")
