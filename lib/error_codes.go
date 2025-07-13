@@ -11,6 +11,7 @@ const (
 	DeserializationError ErrorCode = "DeserializationError"
 	UnsupportedTypeError ErrorCode = "UnsupportedTypeError"
 	PanicFound           ErrorCode = "PanicFoundError"
+	InitError            ErrorCode = "InitError"
 )
 
 func (e ErrorCode) ToString() string {
