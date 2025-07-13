@@ -56,6 +56,10 @@ func (tn *TreeNode) IsFull() bool {
 	return (len(tn.nodes) >= constants.MaxNodesInTreeNode)
 }
 
+func (tn *TreeNode) IsValidNumberOfNodes() bool {
+	return len(tn.nodes) <= constants.MaxNodesInTreeNode
+}
+
 func (tn *TreeNode) SetLeaf(leaf bool) {
 	tn.leaf = leaf
 }
@@ -111,6 +115,16 @@ func (tn *TreeNode) Next() pagination.PageID {
 	return tn.next
 }
 
+func (tn *TreeNode) IsPrimaryKeyfound(key string) bool {
+	for _, node := range tn.Nodes() {
+		if node.PrimaryKey() == key {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (tn *TreeNode) SortNodes() {
 	if tn == nil || len(tn.Nodes()) == 0 {
 		return
@@ -131,6 +145,8 @@ func SplitTreeNode(n *TreeNode) (*TreeNode, *TreeNode, Node, lib.Error) {
 		leftTreeNode.SetPageID(n.PageID())
 		leftTreeNode.SetNodes(n.Nodes()[:mid])
 		rightTreeNode.SetNodes(n.Nodes()[mid:])
+		leftTreeNode.SetParentNode(n.ParentNode())
+		rightTreeNode.SetParentNode(n.ParentNode())
 
 		middleNode := rightTreeNode.Nodes()[0]
 		return leftTreeNode, rightTreeNode, middleNode, lib.EmptyError()
@@ -142,6 +158,10 @@ func SplitTreeNode(n *TreeNode) (*TreeNode, *TreeNode, Node, lib.Error) {
 	leftTreeNode.SetPageID(n.PageID())
 	leftTreeNode.SetNodes(n.Nodes()[:mid])
 	rightTreeNode.SetNodes(n.Nodes()[mid+1:])
+	leftTreeNode.SetChildTreeNodes(n.ChildTreeNodes()[:mid+1])
+	rightTreeNode.SetChildTreeNodes(n.ChildTreeNodes()[mid+1:])
+	leftTreeNode.SetParentNode(n.ParentNode())
+	rightTreeNode.SetParentNode(n.ParentNode())
 
 	middleNode := n.Nodes()[mid]
 	return leftTreeNode, rightTreeNode, middleNode, lib.EmptyError()
@@ -160,7 +180,7 @@ func (n *TreeNode) InsertInternalKey(node Node, leftPageID, rightPageID paginati
 		}
 	}
 
-	n.nodes = append(n.nodes, EmptyNode()) 
+	n.nodes = append(n.nodes, EmptyNode())
 	copy(n.nodes[insertIdx+1:], n.nodes[insertIdx:])
 	n.nodes[insertIdx] = node
 
@@ -178,6 +198,10 @@ func (n *TreeNode) InsertInternalKey(node Node, leftPageID, rightPageID paginati
 func (n *TreeNode) InsertInOrder(node Node) lib.Error {
 	insertIdx := len(n.Nodes())
 	for i, entry := range n.Nodes() {
+		if entry.PrimaryKey() == node.primaryKey {
+			n.nodes[i].value = node.Value()
+			return lib.EmptyError()
+		}
 		if node.primaryKey < entry.PrimaryKey() {
 			insertIdx = i
 			break

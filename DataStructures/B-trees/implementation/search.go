@@ -23,6 +23,10 @@ func (b *BPlusTree) Search(primaryKey string) (common.Value, lib.Error) {
 }
 
 func (b *BPlusTree) search(nodePage pagination.PageID, primaryKey string) (common.Value, lib.Error) {
+	if nodePage == 0 {
+		return common.Value{}, lib.EmptyError().AddErr(lib.InitError, fmt.Errorf("root page Id is not set"))
+	}
+
 	treeNode, err := b.LoadTreeNode(nodePage)
 	if err.IsNotEmpty() {
 		return common.Value{}, err

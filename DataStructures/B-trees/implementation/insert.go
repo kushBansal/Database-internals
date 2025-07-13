@@ -3,6 +3,8 @@ package implementation
 import (
 	"fmt"
 	"runtime/debug"
+
+	"github.com/Kush/Database-internals/DataStructures/B-trees/constants"
 	"github.com/Kush/Database-internals/DataStructures/B-trees/node"
 	"github.com/Kush/Database-internals/DataStructures/aggregates/common"
 	"github.com/Kush/Database-internals/diskStorage/pagination"
@@ -30,7 +32,7 @@ func (b *BPlusTree) Insert(primaryKey string, value common.Value) lib.Error {
 		return err2
 	}
 
-	if !leaf.IsFull() {
+	if !leaf.IsFull() || leaf.IsPrimaryKeyfound(primaryKey) {
 		return b.insertIntoLeaf(leaf, primaryKey, value)
 	}
 
@@ -83,6 +85,9 @@ func (b *BPlusTree) insertIntoLeaf(leaf *node.TreeNode, key string, value common
 	}
 
 	err := leaf.InsertInOrder(node.NewNode(key, value))
+	if leaf.NodesCount() > constants.MaxNodesInTreeNode {
+		return lib.EmptyError().AddErr(lib.SystemError, fmt.Errorf("more than expected number of treeNode, MaxNodesInTreeNode: %v, currentNumberOfNodes: %v", constants.MaxNodesInTreeNode, leaf.NodesCount()))
+	}
 	if err.IsNotEmpty() {
 		return err
 	}
@@ -95,7 +100,6 @@ func (b *BPlusTree) splitLeafAndInsert(leaf *node.TreeNode, key string, value co
 	if !leaf.IsLeaf() {
 		return nil, nil, node.EmptyNode(), lib.EmptyError().AddErr(lib.InvalidInputError, fmt.Errorf("splitLeafAndInsert: not a leaf node"))
 	}
-
 
 	leaf.InsertInOrder(node.NewNode(key, value))
 
@@ -139,7 +143,6 @@ func (b *BPlusTree) insertIntoParent(leftNode, rightNode *node.TreeNode, middleN
 			return err
 		}
 
-
 		leftNode.SetParentNode(rootPageID)
 		rightNode.SetParentNode(rootPageID)
 
@@ -170,7 +173,7 @@ func (b *BPlusTree) insertIntoParent(leftNode, rightNode *node.TreeNode, middleN
 		return err
 	}
 
-	if !parent.IsFull() {
+	if parent.IsValidNumberOfNodes() {
 		return b.SaveNode(parent)
 	}
 
@@ -183,7 +186,10 @@ func (b *BPlusTree) insertIntoParent(leftNode, rightNode *node.TreeNode, middleN
 	if err2.IsNotEmpty() {
 		return err2
 	}
-	newRight.SetPageID(newPageID)
+	err = b.SetPageId(newRight, newPageID)
+	if err.IsNotEmpty() {
+		return err
+	}
 	newleft.SetPageID(parent.PageID())
 	newRight.SetParentNode(parent.ParentNode())
 	newleft.SetParentNode(parent.ParentNode())
@@ -195,6 +201,21 @@ func (b *BPlusTree) insertIntoParent(leftNode, rightNode *node.TreeNode, middleN
 		return err
 	}
 
-	// Recursive promotion
 	return b.insertIntoParent(newleft, newRight, promotedKey)
+}
+
+func (b *BPlusTree) SetPageId(tn *node.TreeNode, pageID pagination.PageID) lib.Error {
+	tn.SetPageID(pageID)
+
+	for _, childPageId := range tn.ChildTreeNodes() {
+		childTreeNode, err := b.LoadTreeNode(childPageId)
+		if err.IsNotEmpty() {
+			return err
+		}
+		childTreeNode.SetParentNode(pageID)
+		if err := b.SaveNode(childTreeNode); err.IsNotEmpty() {
+			return err
+		}
+	}
+	return lib.EmptyError()
 }
